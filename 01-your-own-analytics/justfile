@@ -1,0 +1,51 @@
+default:
+    just start
+
+install-local:
+    just start && just add_to_hosts && just create-topic && just install && just seed
+
+install-prod:
+    just start && just create-topic && just install && just seed
+
+start:
+    docker compose -f ./docker/docker-compose.yml up -d
+
+reload:
+    docker compose -f ./docker/docker-compose.yml down && docker compose -f ./docker/docker-compose.yml up -d
+
+stop:
+    docker compose -f ./docker/docker-compose.yml down
+
+remove:
+    docker compose -f ./docker/docker-compose.yml down -v
+
+add_to_hosts:
+    echo "127.0.0.1 dashboard.test\n127.0.0.1 analytics.test" | sudo tee -a /etc/hosts
+
+create-topic:
+    docker exec event-store kafka-topics.sh \
+    --create --topic analytics \
+    --config retention.ms=604800000 \
+    --bootstrap-server localhost:9092
+
+install:
+    export $(grep -v '^#' ./docker/.env | xargs) \
+      && docker run --rm  \
+      --env CLICKHOUSE_HOST --env CLICKHOUSE_USER --env CLICKHOUSE_PASSWORD \
+      --env CLICKHOUSE_PROTOCOL --env CLICKHOUSE_PORT --env CLICKHOUSE_DB \
+      --network=analytics \
+      -v ./docker/scripts:/app oven/bun bun /app/install.ts
+
+seed:
+    export $(grep -v '^#' ./docker/.env | xargs) \
+    && docker run --rm  \
+    --env CLICKHOUSE_HOST --env CLICKHOUSE_USER --env CLICKHOUSE_PASSWORD \
+    --env CLICKHOUSE_PROTOCOL --env CLICKHOUSE_PORT --env CLICKHOUSE_DB \
+    --network=analytics \
+    -v ./docker/scripts:/app oven/bun bun /app/seed.ts
+
+change-domain-analytics WHAT="":
+    sed -i'' -e "s#analytics.test#{{WHAT}}#g" ./docker/nginx/analytics.conf
+
+change-domain-dashboard WHAT="":
+    sed -i'' -e "s#dashboard.test#{{WHAT}}#g" ./docker/nginx/dashboard.conf

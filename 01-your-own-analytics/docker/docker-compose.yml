@@ -1,0 +1,135 @@
+x-shared: &x-shared
+  restart: unless-stopped
+  logging:
+    driver: 'json-file'
+    options:
+      max-file: '5'
+      max-size: '10m'
+
+
+services:
+  reverse_proxy:
+    <<: *x-shared
+    hostname: reverse_proxy
+    container_name: reverse_proxy
+    image: nginx:latest
+    volumes:
+      - ./nginx/:/etc/nginx/conf.d/
+    ports:
+      - "80:80"
+    networks:
+      analytics:
+    depends_on:
+      - dashboard
+      - input-pipeline
+
+  dashboard:
+    <<: *x-shared
+    hostname: dashboard
+    container_name: dashboard
+    image: grafana/grafana:10.4.2
+    networks:
+      analytics:
+    environment:
+      - GF_INSTALL_PLUGINS
+    volumes:
+      - grfana:/var/lib/grafana
+      - ./grafana/provisioning/:/etc/grafana/provisioning/
+      - ./grafana/provisioning/dashboards/:/etc/grafana/provisioning/dashboards/
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+
+  input-pipeline:
+    <<: *x-shared
+    container_name: input-pipeline
+    hostname: input-pipeline
+    image: jeffail/benthos
+    networks:
+      analytics:
+    volumes:
+      - ./benthos/config.yaml:/benthos.yaml
+    environment:
+      - KAFKA_HOST
+      - PROJECTS
+    depends_on:
+      event-store:
+        condition: service_healthy
+
+  event-store:
+    <<: *x-shared
+    image: bitnami/kafka:3.7
+    container_name: event-store
+    hostname: event-store
+    volumes:
+      - kafka:/bitnami:rw
+    environment:
+      - KAFKA_CFG_NODE_ID
+      - KAFKA_CFG_PROCESS_ROLES
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS
+      - KAFKA_CFG_LISTENERS
+      - KAFKA_CFG_ADVERTISED_LISTENERS
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME
+    networks:
+      analytics:
+    healthcheck:
+      test: kafka-topics.sh --bootstrap-server localhost:9092 --list --topic-id 1
+      start_period: 15s
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  processing-pipeline:
+    <<: *x-shared
+    container_name: processing-pipeline
+    hostname: processing-pipeline
+    image: timberio/vector:latest-debian
+    networks:
+      analytics:
+    volumes:
+      - ./vector/config.yaml:/etc/vector/vector.yaml
+      - ./vector/mmdb:/etc/mmdb/
+    environment:
+      - KAFKA_HOST
+      - CLICKHOUSE_DB
+      - CLICKHOUSE_USER
+      - CLICKHOUSE_PASSWORD
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT
+      - CLICKHOUSE_PROTOCOL
+      - CLICKHOUSE_PORT
+      - CLICKHOUSE_HOST
+    depends_on:
+      event-store:
+        condition: service_healthy
+
+
+  olap-db:
+    <<: *x-shared
+    image: clickhouse/clickhouse-server
+    container_name: olap-db
+    hostname: olap-db
+    ports:
+      - '8123:8123'
+      - '9000:9000'
+    networks:
+      analytics:
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    environment:
+      - CLICKHOUSE_DB
+      - CLICKHOUSE_USER
+      - CLICKHOUSE_PASSWORD
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT
+    volumes:
+      - clickhouse:/var/lib/clickhouse
+
+networks:
+  analytics:
+    name: analytics
+
+volumes:
+  clickhouse:
+  grfana:
+  kafka:

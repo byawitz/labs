@@ -1,0 +1,34 @@
+http:
+  address: 0.0.0.0:4195
+  enabled: true
+
+input:
+  http_server:
+    path: /
+    allowed_verbs: [ POST ]
+    sync_response:
+      headers:
+        Content-Type: application/json
+        status: 201
+
+pipeline:
+  processors:
+    - mapping: |
+        root = this
+        root.real_ip = meta("X-Forwarded-For")
+        root.useragent = meta("http_server_user_agent")
+        
+        root = if !"${PROJECTS}".contains(meta("X-App")).catch(false) {
+          deleted()
+        }
+output:
+  broker:
+    outputs:
+      - stdout: { }
+      - kafka:
+          addresses: [ ${KAFKA_HOST} ]
+          topic: "analytics"
+          max_in_flight: 64
+          batching:
+            count: 1
+            period: 10s

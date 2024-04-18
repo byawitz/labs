@@ -1,1 +1,5 @@
 .idea
+*.tfvars
+*.tfstat*
+.terraform.lock.hcl
+.terraform

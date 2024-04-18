@@ -1,0 +1,15 @@
+apiVersion: 1
+
+datasources:
+  - name: ClickHouse
+    type: grafana-clickhouse-datasource
+    jsonData:
+      defaultDatabase: analytics
+      port: 9000
+      host: olap-db
+      username: analytics
+      tlsSkipVerify: false
+    secureJsonData:
+      password: strong_password
+
+

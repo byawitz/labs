@@ -1,0 +1,76 @@
+enrichment_tables:
+  mmdb:
+    type: "mmdb"
+    path: "/etc/mmdb/GeoLite2-City.mmdb"
+
+sources:
+  event_store:
+    type: kafka
+    bootstrap_servers: ${KAFKA_HOST}
+    group_id: events-group
+    topics:
+      - analytics
+
+transforms:
+  remap-values:
+    type: remap
+    inputs:
+      - event_store
+    source: |-
+      event, err = parse_json(.message)
+      if err != null {
+        log("Unable to parse JSON: " + err, level: "error")
+      }
+      
+      ua, err = parse_user_agent(event.useragent, mode: "enriched")
+      if err != null {
+        log("Unable to parse useragent JSON: " + err, level: "error")
+      }
+      event.browser_name = ua.browser.family
+      event.browser_version = ua.browser.version
+      event.device_type = ua.device.category
+      event.device_brand = ua.device.brand
+      event.device_name = ua.device.model
+      event.device_os_name = ua.os.family
+      event.device_os_version = ua.os.version
+      
+      del(event.useragent)
+      
+      ip,err = split(event.real_ip,",")
+      if err != null {
+        log("Unable to parse IP: " + err, level: "error")
+      }
+      
+      ip = ip[0]
+      data, err = get_enrichment_table_record("mmdb", { "ip": ip,},)
+      
+      if err != null {
+        log("Unable to parse IP data: " + err, level: "error")
+      }
+      
+      event.country_code = data.country.iso_code
+      event.country_name = data.country.names.en
+      event.city_name = data.city.names.en
+      
+      del(event.real_ip)
+      . = event
+    drop_on_error: true
+
+sinks:
+  console:
+    type: console
+    inputs:
+      - remap-values
+    encoding:
+      codec: json
+  to-olap:
+    type: clickhouse
+    inputs:
+      - remap-values
+    endpoint: ${CLICKHOUSE_PROTOCOL}://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}
+    database: ${CLICKHOUSE_DB}
+    table: data
+    auth:
+      user: ${CLICKHOUSE_USER}
+      password: ${CLICKHOUSE_PASSWORD}
+      strategy: basic

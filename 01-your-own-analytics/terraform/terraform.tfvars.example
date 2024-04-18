@@ -1,0 +1,8 @@
+cloudflare_token     = "YOUR_TOKEN"
+cloudflare_zone_name = "YOUR_ZONE_NAME"
+
+hetzner_token        = "YOUR_TOKEN"
+ssh_key              = "YOUR_SSH_KEY_NAME"
+
+zone                 = "ash"
+server_size          = "cpx21"
