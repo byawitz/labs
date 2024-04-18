@@ -9,9 +9,9 @@ Create a self-hosted Analytics solution using
 - **V** - [Vector](https://vector.dev/) as data aggregator.
 - **G** - [Grafana](https://grafana.com/) as a rich dashbaord
 - **C** - [ClickHouse](https://clickhouse.com/) as a real-time OLAP database.
--
 
-> Check the lab [Article](https://blog.binyamin.dev/self-hosted-analytics)
+
+> ⚡️ Check the lab [Article](https://blog.binyamin.dev/self-hosted-analytics)
 
 ### Folder structure
 
