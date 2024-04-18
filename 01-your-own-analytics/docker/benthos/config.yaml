@@ -30,5 +30,5 @@ output:
           topic: "analytics"
           max_in_flight: 64
           batching:
-            count: 1
+            count: 100
             period: 10s
