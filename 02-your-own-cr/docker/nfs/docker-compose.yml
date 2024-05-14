@@ -22,7 +22,10 @@ services:
     deploy:
       mode: global
     ports:
-      - "80:8080"
+      - target: 8080
+        published: 80
+        mode: host
+        protocol: tcp
     secrets:
       - nginx_config_file
       - nginx_js_file
