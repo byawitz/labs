@@ -1,0 +1,14 @@
+default:
+    just start
+
+start:
+    docker compose -f docker-compose.yml up -d
+
+reload:
+    docker compose -f docker-compose.yml down && docker compose -f docker-compose.yml up -d
+
+stop:
+    docker compose -f docker-compose.yml down
+
+remove:
+    docker compose -f docker-compose.yml down -v
