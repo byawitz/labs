@@ -9,9 +9,5 @@ function set(r) {
     if (r.method !== 'GET')
         c = privateRepo;
 
-    r.log(100,"HI");
-    r.error(r.method);
-    r.error(c);
-
     return c;
 }
