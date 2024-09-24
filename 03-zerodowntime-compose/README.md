@@ -30,7 +30,7 @@ docker compose ps demo -q
 > cdc3ccb401b2527801e...
 ```
 
-#### aa 
+#### Rebuild 
 Rebuild the docker compose 
 ```shell
 docker compose build
